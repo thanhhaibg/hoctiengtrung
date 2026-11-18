@@ -1,0 +1,9 @@
+{
+  "name": "it-mes-chinese",
+  "version": "1.0.0",
+  "description": "IT MES Chinese Pinyin-First Learning Web App with Automatic Cloud Sync",
+  "type": "module",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}
