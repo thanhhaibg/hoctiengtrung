@@ -251,6 +251,9 @@ function selectProfile(profileId) {
   appState.activeProfileId = target.id;
   saveLocalOnly();
 
+  const searchEl = document.getElementById("quick-search-input");
+  if (searchEl) searchEl.value = "";
+
   document.getElementById("profile-overlay").classList.add("hidden");
   refreshAllViews();
   syncFromCloud(false);
@@ -407,8 +410,17 @@ function selectDepartment(deptId) {
   renderQuickSearch();
 }
 
+function clearQuickSearch() {
+  const inputEl = document.getElementById("quick-search-input");
+  if (inputEl) {
+    inputEl.value = "";
+  }
+  renderQuickSearch();
+}
+
 function renderQuickSearch() {
-  const query = (document.getElementById("quick-search-input").value || "").trim().toLowerCase();
+  const inputEl = document.getElementById("quick-search-input");
+  const query = (inputEl ? inputEl.value : "").trim().toLowerCase();
   const container = document.getElementById("quick-search-results");
   const all = getAllVocabulary();
 
@@ -1047,9 +1059,21 @@ function refreshAllViews() {
 
 window.addEventListener("DOMContentLoaded", () => {
   loadState();
+  const searchEl = document.getElementById("quick-search-input");
+  if (searchEl) searchEl.value = "";
   renderProfileOverlay();
   refreshAllViews();
   syncFromCloud(false);
+
+  // Chặn trình duyệt tự động điền (autofill) tên Profile vào ô tìm kiếm sau khi tải trang
+  setTimeout(() => {
+    const el = document.getElementById("quick-search-input");
+    const activeProf = getActiveProfile();
+    if (el && activeProf && el.value.trim() === activeProf.name.trim()) {
+      el.value = "";
+      renderQuickSearch();
+    }
+  }, 300);
 });
 
 // Tự động đồng bộ lại khi người dùng mở lại tab trên điện thoại/máy tính

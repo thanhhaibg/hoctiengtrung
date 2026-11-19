@@ -127,19 +127,58 @@
         </div>
       </div>
 
+      <!-- Quick Lesson Launcher right on Dashboard -->
+      <div class="card">
+        <h3 style="font-size: 1.08rem; margin-bottom: 12px;">📚 Chọn Bài Học &amp; Luyện Tập Hôm Nay</h3>
+        <div class="grid-3">
+          <div onclick="switchView('vocab')" style="background: var(--bg-main); border: 1.5px solid var(--border-color); border-radius: 12px; padding: 14px; cursor: pointer;">
+            <div style="font-weight: 800; color: var(--pinyin-color); font-size: 0.98rem;">🗂️ 2. Học Từ Mới SRS</div>
+            <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">Flashcard từ vựng &amp; mẫu câu IT MES có âm đọc chậm.</div>
+          </div>
+          <div onclick="switchView('listen')" style="background: var(--bg-main); border: 1.5px solid var(--border-color); border-radius: 12px; padding: 14px; cursor: pointer;">
+            <div style="font-weight: 800; color: var(--success); font-size: 0.98rem;">🎧 3. Luyện Nghe Phản Xạ</div>
+            <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">Nghe "mù" cuộc gọi từ xưởng để bắt từ khóa Pinyin.</div>
+          </div>
+          <div onclick="switchView('dictation')" style="background: var(--bg-main); border: 1.5px solid var(--border-color); border-radius: 12px; padding: 14px; cursor: pointer;">
+            <div style="font-weight: 800; color: var(--accent); font-size: 0.98rem;">⌨️ 4. Nghe &amp; Gõ Pinyin</div>
+            <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">Nghe câu lệnh MES và tự gõ lại từ khóa Pinyin.</div>
+          </div>
+          <div onclick="switchView('roleplay')" style="background: var(--bg-main); border: 1.5px solid var(--border-color); border-radius: 12px; padding: 14px; cursor: pointer;">
+            <div style="font-weight: 800; color: #c084fc; font-size: 0.98rem;">🎙️ 5. Đóng Vai &amp; Luyện Nói</div>
+            <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">Xử lý tình huống với PD, TE, QC, Kho bằng Mic.</div>
+          </div>
+          <div onclick="switchView('pinyin')" style="background: var(--bg-main); border: 1.5px solid var(--border-color); border-radius: 12px; padding: 14px; cursor: pointer;">
+            <div style="font-weight: 800; color: #38bdf8; font-size: 0.98rem;">🔤 6. Quy Tắc Đọc Pinyin</div>
+            <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">4 nhóm quy tắc phát âm Pinyin cấp tốc cho người Việt.</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Instant Search Box for Factory Floor -->
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
           <h3 style="font-size: 1.08rem;">⚡ Tra Cứu Nhanh Khi Đang Đứng Dưới Xưởng (Tiếng Việt / Pinyin)</h3>
           <span style="font-size: 0.8rem; color: var(--text-muted);">Bấm vào kết quả để phát âm ngay</span>
         </div>
-        <input
-          type="text"
-          id="quick-search-input"
-          class="input-field"
-          placeholder="🔍 Gõ từ cần nói (VD: qua trạm, khóa đơn, trùng mã, thiếu liệu, chụp màn hình, guozhan, saoma...)"
-          oninput="renderQuickSearch()"
-        />
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <input
+            type="search"
+            id="quick-search-input"
+            name="mes_lookup_term"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            readonly
+            onfocus="this.removeAttribute('readonly')"
+            class="input-field"
+            placeholder="🔍 Gõ từ cần nói (VD: qua trạm, khóa đơn, trùng mã, thiếu liệu, chụp màn hình, guozhan, saoma...)"
+            oninput="renderQuickSearch()"
+          />
+          <button type="button" class="btn" onclick="clearQuickSearch()" title="Xóa từ khóa tìm kiếm" style="white-space: nowrap;">
+            ✖️ Xóa
+          </button>
+        </div>
         <div id="quick-search-results" class="grid-2" style="margin-top: 14px;"></div>
       </div>
 
@@ -261,7 +300,7 @@
       <div style="display: flex; flex-direction: column; gap: 12px;">
         <div>
           <label style="font-size: 0.85rem; color: var(--text-muted);">Tên Profile (VD: Profile 1, Profile 2, hoặc tên riêng):</label>
-          <input type="text" id="prof-name-input" class="input-field" placeholder="Nhập tên Profile..." />
+          <input type="text" id="prof-name-input" name="mes_profile_label" autocomplete="off" class="input-field" placeholder="Nhập tên Profile..." />
         </div>
         <div>
           <label style="font-size: 0.85rem; color: var(--text-muted);">Chọn biểu tượng Avatar:</label>
@@ -276,7 +315,7 @@
         </div>
         <div>
           <label style="font-size: 0.85rem; color: var(--text-muted);">Mã PIN 4 số bảo vệ tiến độ riêng (Để trống nếu không cần khóa):</label>
-          <input type="password" maxlength="4" id="prof-pin-input" class="input-field" placeholder="VD: 1234 (Tùy chọn)" />
+          <input type="text" inputmode="numeric" maxlength="4" id="prof-pin-input" name="mes_profile_pin_code" autocomplete="off" style="-webkit-text-security: disc;" class="input-field" placeholder="VD: 1234 (Tùy chọn)" />
         </div>
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
           <button class="btn" onclick="closeProfileModal()">Hủy</button>

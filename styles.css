@@ -137,8 +137,8 @@ body {
 /* NAVIGATION TABS */
 .nav-tabs {
   display: flex;
-  gap: 6px;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  gap: 8px;
   padding: 10px 20px;
   background: var(--bg-main);
   border-bottom: 1px solid var(--border-color);
