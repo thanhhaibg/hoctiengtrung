@@ -188,20 +188,115 @@ function getFilteredVocabulary() {
   return all.filter(item => item.dept === appState.selectedDept);
 }
 
-// --- PHÁT ÂM TIẾNG TRUNG (WEB SPEECH API TTS) ---
-function speakChinese(text, rate = 1.0) {
+// --- PHÁT ÂM TIẾNG TRUNG TỐC ĐỘ TỨC THÌ (CLOUD AUDIO CACHE + PRELOAD + FALLBACK) ---
+const mesAudioCache = new Map();
+let activeAudioPlayer = null;
+let speechSessionId = 0;
+
+function cleanChineseForTTS(raw) {
+  return String(raw || "")
+    .replace(/\s*\/\s*/g, "，")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function stopCurrentAudio() {
+  speechSessionId += 1;
+  if (activeAudioPlayer) {
+    activeAudioPlayer.pause();
+    activeAudioPlayer = null;
+  }
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+}
+
+function warmUpSpeechVoices() {
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.getVoices();
+    if (typeof window.speechSynthesis.onvoiceschanged !== "undefined") {
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
+  }
+}
+
+function preloadChineseAudio(rawText) {
+  if (window.location.protocol === "file:") return Promise.resolve(null);
+  const cleaned = cleanChineseForTTS(rawText);
+  if (!cleaned) return Promise.resolve(null);
+
+  if (mesAudioCache.has(cleaned)) {
+    return mesAudioCache.get(cleaned);
+  }
+
+  const promise = fetch(`/api/tts?lang=zh-CN&q=${encodeURIComponent(cleaned)}`)
+    .then(res => {
+      if (!res.ok) throw new Error("TTS HTTP " + res.status);
+      return res.blob();
+    })
+    .then(blob => URL.createObjectURL(blob))
+    .catch(() => {
+      mesAudioCache.delete(cleaned);
+      return null;
+    });
+
+  mesAudioCache.set(cleaned, promise);
+  return promise;
+}
+
+function preloadChineseList(texts) {
+  if (window.location.protocol === "file:" || !Array.isArray(texts)) return;
+  const unique = [];
+  texts.forEach(t => {
+    const c = cleanChineseForTTS(t);
+    if (c && !mesAudioCache.has(c) && !unique.includes(c)) {
+      unique.push(c);
+    }
+  });
+  unique.slice(0, 8).forEach(t => preloadChineseAudio(t));
+}
+
+function speakChineseFallback(text, rate = 1.0) {
   if (!("speechSynthesis" in window)) {
     alert("Trình duyệt của bạn không hỗ trợ phát âm tự động.");
     return;
   }
   window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
+  const utter = new SpeechSynthesisUtterance(cleanChineseForTTS(text));
   utter.lang = "zh-CN";
   utter.rate = rate;
   const voices = window.speechSynthesis.getVoices();
   const zhVoice = voices.find(v => v.lang.includes("zh") || v.lang.includes("CN") || v.lang.includes("TW"));
   if (zhVoice) utter.voice = zhVoice;
   window.speechSynthesis.speak(utter);
+}
+
+async function speakChinese(text, rate = 1.0) {
+  stopCurrentAudio();
+  const currentSession = speechSessionId;
+  const cleaned = cleanChineseForTTS(text);
+  if (!cleaned) return;
+
+  if (window.location.protocol !== "file:") {
+    const blobUrl = await preloadChineseAudio(cleaned);
+    if (currentSession !== speechSessionId) return;
+
+    if (blobUrl) {
+      const audio = new Audio(blobUrl);
+      audio.playbackRate = rate;
+      activeAudioPlayer = audio;
+      audio.play().catch(() => {
+        if (currentSession === speechSessionId) {
+          speakChineseFallback(cleaned, rate);
+        }
+      });
+      return;
+    }
+  }
+
+  speakChineseFallback(cleaned, rate);
 }
 
 // --- QUẢN LÝ HỒ SƠ NGƯỜI HỌC (PROFILE 1, 2, 3...) ---
@@ -464,6 +559,9 @@ function renderQuickSearch() {
       </div>
     </div>
   `).join("");
+
+  // Tải trước âm thanh 4 kết quả đang hiện để bấm vào là phát tức thì
+  preloadChineseList(filtered.slice(0, 4).map(it => it.hanzi || it.pinyin));
 }
 
 // --- VIEW 2: FLASHCARD TỪ MỚI (SRS) & BẢNG TỪ ĐIỂN ---
@@ -596,6 +694,17 @@ function renderVocabSection() {
       </div>
     `;
   }).join("");
+
+  // Preload thẻ hiện tại, câu ví dụ hiện tại và 3 thẻ tiếp theo vào RAM
+  const toPreload = [item.hanzi || item.pinyin, item.exHanzi || item.hanzi || item.pinyin];
+  for (let offset = 1; offset <= 3; offset++) {
+    const nextW = list[(appState.currentVocabIdx + offset) % list.length];
+    if (nextW) {
+      toPreload.push(nextW.hanzi || nextW.pinyin);
+      toPreload.push(nextW.exHanzi || nextW.hanzi || nextW.pinyin);
+    }
+  }
+  preloadChineseList(toPreload);
 }
 
 function prevVocabCard() {
@@ -681,6 +790,12 @@ function renderListeningSection() {
       <div id="listen-feedback" style="margin-top: 14px; font-weight: 700;"></div>
     </div>
   `;
+
+  preloadChineseList([
+    item.audioText,
+    drills[(appState.currentListenIdx + 1) % drills.length]?.audioText,
+    drills[(appState.currentListenIdx + 2) % drills.length]?.audioText
+  ]);
 }
 
 function toggleListenReveal() {
@@ -765,6 +880,12 @@ function renderDictationSection() {
       <div id="dictation-result" style="margin-top: 12px; font-weight: 700;"></div>
     </div>
   `;
+
+  preloadChineseList([
+    item.audioText,
+    list[(appState.currentDictIdx + 1) % list.length]?.audioText,
+    list[(appState.currentDictIdx + 2) % list.length]?.audioText
+  ]);
 }
 
 function fillDictationHint() {
@@ -870,6 +991,11 @@ function renderRoleplaySection() {
       </div>
     </div>
   `;
+
+  preloadChineseList([
+    rp.partnerQuestionHanzi,
+    ...rp.SuggestedReplies.map(rep => rep.hanzi)
+  ]);
 }
 
 function startSpeechPractice(expectedHanzi, idx) {
@@ -1059,6 +1185,7 @@ function refreshAllViews() {
 
 window.addEventListener("DOMContentLoaded", () => {
   loadState();
+  warmUpSpeechVoices();
   const searchEl = document.getElementById("quick-search-input");
   if (searchEl) searchEl.value = "";
   renderProfileOverlay();
